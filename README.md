@@ -16,7 +16,8 @@ Android-app til **Philips 65OLED865/12**, JointSpace v6 (observeret API 6.4.0).
 |---|---|
 | Premium mørk fjernbetjening, touch/haptics, D-pad, OK, Back, Home | Implementeret |
 | Standby, Smart Wake med WOL/UDP9 og online-probe | Implementeret; TV/firmware-afhængig |
-| Volumen, mute, kanal +/- og medietaster | JointSpace API v6 |
+| Volumen, mute, direkte volumenskyder, kanal +/- og medietaster | JointSpace API v6 |
+| Tre redigerbare M1–M3-makroer med validerede tastetryk | Lokal lagring og sekventiel afsendelse |
 | Kanaloversigt, søgning, direkte valg, lokale favoritter | TV's egen kanaldatabase |
 | Installerede apps, søgning, start fra menu, hurtiggenveje | TV's egne intents |
 | Ambilight power, profiler, læs aktiv konfiguration, live supportedstyles | JointSpace API v6 |
