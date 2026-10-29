@@ -269,7 +269,8 @@ public final class MainActivity extends Activity {
         };
         root.addView(section("STIL & PROFIL",CYAN),gap(dp(8),dp(18)));
         for(String[] preset:presets)root.addView(filled(preset[0],PURPLE,()->ambiStyle(preset[1],preset[2],preset[0])),gap(dp(59),dp(7)));
-        root.addView(filled("↻  LÆS AKTUEL AMBILIGHT",CYAN,this::readAmbilight),gap(dp(54),dp(18)));
+        root.addView(filled("☷  STILARTER SOM TV'ET UNDERSTØTTER",GREEN,this::selectSupportedAmbilight),gap(dp(56),dp(18)));
+        root.addView(filled("↻  LÆS AKTUEL AMBILIGHT",CYAN,this::readAmbilight),gap(dp(54),dp(8)));
     }
     private void toolsPage(LinearLayout root){
         root.addView(section("TV & FORBINDELSE",CYAN));
@@ -294,6 +295,11 @@ public final class MainActivity extends Activity {
             }catch(Exception e){error(e);}
         }),gap(dp(54),dp(7)));
         root.addView(filled("⚡  SEND WOL OG TJEK ONLINE",GREEN,this::wake),gap(dp(56),dp(8)));
+        root.addView(section("DIREKTE INPUT / HDMI",CYAN),gap(dp(8),dp(20)));
+        String[][] inputs={{"LIVE TV","content://android.media.tv/channel"},{"HDMI 1","HW5"},
+            {"HDMI 2","HW6"},{"HDMI 3","HW7"},{"HDMI 4","HW8"}};
+        for(String[] route:inputs)root.addView(filled("▣  "+route[0],WHITE,()->selectInput(route[1],route[0])),gap(dp(53),dp(5)));
+        root.addView(note("Input-routing er firmwareafhængig. Brug SOURCE-knappen, hvis direkte HDMI ikke accepteres."));
         root.addView(section("AVANCERET",CYAN),gap(dp(6),dp(22)));
         root.addView(filled("GENINDLÆS TV / APPS / KANALER",WHITE,this::connect),gap(dp(54),dp(5)));
         root.addView(filled("NUMERISK TASTATUR & SPECIALTASTER",WHITE,this::keypadDialog),gap(dp(54),dp(5)));
@@ -404,6 +410,45 @@ public final class MainActivity extends Activity {
         run("APP",()->api.launch(a),r->message("Åbnet  •  "+a.name,GREEN));}
     private void tune(PhilipsApi.Channel c){if(api==null)return;
         run("KANAL",()->api.tune(c),r->{channelName=c.name;message("Valgt  •  "+c.name,GREEN);page(page);});}
+    private void selectInput(String id,String name){if(api==null)return;
+        run("INPUT",()->api.selectSource(id),r->message("Kilde valgt  •  "+name,GREEN));
+    }
+    private void selectSupportedAmbilight(){
+        if(api==null)return;
+        run("STILARTER",api::supportedAmbilightStyles,result->{
+            JSONObject config=(JSONObject)result;
+            org.json.JSONArray styles=config.optJSONArray("supportedStyles");
+            if(styles==null||styles.length()==0){
+                message("Ingen understøttede Ambilight-profiler returneret",GOLD);return;
+            }
+            ArrayList<String> labels=new ArrayList<>();
+            ArrayList<String[]> commands=new ArrayList<>();
+            for(int i=0;i<styles.length();i++){
+                JSONObject style=styles.optJSONObject(i);
+                if(style==null)continue;
+                String name=style.optString("styleName","");
+                if(name.isEmpty())continue;
+                org.json.JSONArray alg=style.optJSONArray("algorithms");
+                if(alg==null||alg.length()==0){
+                    labels.add(name);
+                    commands.add(new String[]{name,name.equals("FOLLOW_VIDEO")?"NATURAL":"STANDARD"});
+                }else{
+                    for(int j=0;j<alg.length();j++){
+                        String setting=alg.optString(j,"");
+                        if(setting.isEmpty())continue;
+                        labels.add(name+" · "+setting);
+                        commands.add(new String[]{name,setting});
+                    }
+                }
+            }
+            new AlertDialog.Builder(this).setTitle("Ambilight-stilarter fra dit TV")
+                .setItems(labels.toArray(new String[0]),(dialog,which)->{
+                    String[] selection=commands.get(which);
+                    if(selection[0].equals("OFF"))ambiPower(false);
+                    else ambiStyle(selection[0],selection[1],labels.get(which));
+                }).setNegativeButton("Luk",null).show();
+        });
+    }
     private void ambiPower(boolean on){if(api==null)return;
         run("AMBI",()->api.ambilightPower(on),r->message("Ambilight "+(on?"tændt":"slukket"),GREEN));}
     private void ambiStyle(String style,String setting,String name){if(api==null)return;
