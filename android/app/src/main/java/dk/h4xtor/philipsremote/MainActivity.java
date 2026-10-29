@@ -25,6 +25,7 @@ import android.widget.GridLayout;
 import android.widget.HorizontalScrollView;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
+import android.widget.SeekBar;
 import android.widget.TextView;
 import org.json.JSONObject;
 import java.util.ArrayList;
@@ -137,6 +138,21 @@ public final class MainActivity extends Activity {
         hero.addView(nowPlaying);
         hero.addView(text(currentVolume<0?"VOL  --":"VOL  "+currentVolume,DIM,12,false));
         root.addView(hero,gap(dp(8),dp(0)));
+        if(currentVolume>=0){
+            root.addView(section("VOLUME  /  "+currentVolume,CYAN),gap(dp(8),dp(12)));
+            SeekBar slider=new SeekBar(this);
+            slider.setMax(100);slider.setProgress(currentVolume);
+            slider.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener(){
+                public void onProgressChanged(SeekBar bar,int progress,boolean fromUser){}
+                public void onStartTrackingTouch(SeekBar bar){}
+                public void onStopTrackingTouch(SeekBar bar){
+                    if(api!=null)run("VOLUME",()->api.setVolume(bar.getProgress()),r->{
+                        currentVolume=bar.getProgress();message("Volume  "+currentVolume,GREEN);
+                    });
+                }
+            });
+            root.addView(slider,gap(dp(50),dp(1)));
+        }
 
         LinearLayout power=row();
         addWeight(power,"⏻  STANDBY",RED,()->key("Standby"));
@@ -191,6 +207,13 @@ public final class MainActivity extends Activity {
         addWeight(actions,"KANALER",CYAN,()->page("CHANNELS"));
         addWeight(actions,"AMBI",GOLD,()->page("AMBILIGHT"));
         root.addView(actions,gap(dp(0),dp(9)));
+        root.addView(section("MINE GENVEJE / MACROS",PURPLE),gap(dp(7),dp(12)));
+        LinearLayout macroQuick=row();
+        for(int i=1;i<=3;i++){
+            int which=i;
+            addWeight(macroQuick,"M"+i,PURPLE,()->executeMacro(which));
+        }
+        root.addView(macroQuick,gap(dp(4),dp(5)));
         if(!apps.isEmpty()){
             root.addView(section("QUICK LAUNCH",CYAN),gap(dp(6),dp(13)));
             LinearLayout quick=row();int count=0;
@@ -300,6 +323,15 @@ public final class MainActivity extends Activity {
             {"HDMI 2","HW6"},{"HDMI 3","HW7"},{"HDMI 4","HW8"}};
         for(String[] route:inputs)root.addView(filled("▣  "+route[0],WHITE,()->selectInput(route[1],route[0])),gap(dp(53),dp(5)));
         root.addView(note("Input-routing er firmwareafhængig. Brug SOURCE-knappen, hvis direkte HDMI ikke accepteres."));
+        root.addView(section("PROGRAMMERBARE MACROS",PURPLE),gap(dp(8),dp(20)));
+        root.addView(note("Gem en sekvens af TV-taster, fx Home,CursorDown,Confirm. Kør via M1–M3 på fjernbetjeningen."));
+        for(int i=1;i<=3;i++){
+            int which=i;
+            LinearLayout actions=row();
+            addWeight(actions,"▶  M"+i,PURPLE,()->executeMacro(which));
+            addWeight(actions,"REDIGER M"+i,CYAN,()->editMacro(which));
+            root.addView(actions,gap(dp(6),dp(6)));
+        }
         root.addView(section("AVANCERET",CYAN),gap(dp(6),dp(22)));
         root.addView(filled("GENINDLÆS TV / APPS / KANALER",WHITE,this::connect),gap(dp(54),dp(5)));
         root.addView(filled("NUMERISK TASTATUR & SPECIALTASTER",WHITE,this::keypadDialog),gap(dp(54),dp(5)));
@@ -410,6 +442,48 @@ public final class MainActivity extends Activity {
         run("APP",()->api.launch(a),r->message("Åbnet  •  "+a.name,GREEN));}
     private void tune(PhilipsApi.Channel c){if(api==null)return;
         run("KANAL",()->api.tune(c),r->{channelName=c.name;message("Valgt  •  "+c.name,GREEN);page(page);});}
+    private String macroDefault(int which){
+        return which==1?"Home":which==2?"WatchTV":"AmbilightOnOff";
+    }
+    private void editMacro(int which){
+        EditText field=input("Home,CursorDown,Confirm");
+        field.setText(prefs.getString("macro_"+which,macroDefault(which)));
+        LinearLayout wrap=vertical(BG);wrap.setPadding(dp(15),dp(7),dp(15),dp(7));
+        wrap.addView(field,gap(dp(56),dp(0)));
+        new AlertDialog.Builder(this).setTitle("Rediger Macro M"+which)
+            .setMessage("Skriv op til 12 tastetryk adskilt af komma. Eksempel: Home,CursorDown,Confirm")
+            .setView(wrap).setNegativeButton("Annuller",null)
+            .setPositiveButton("GEM",(d,w)->{
+                try{String validated=validateMacro(field.getText().toString());
+                    prefs.edit().putString("macro_"+which,validated).apply();
+                    message("Macro M"+which+" gemt",GREEN);
+                }catch(Exception e){error(e);}
+            }).show();
+    }
+    private String validateMacro(String raw){
+        String[] commands=raw.trim().split(",");
+        if(commands.length<1||commands.length>12)throw new IllegalArgumentException("Macro må have 1–12 kommandoer");
+        String allowed="|Home|Back|Source|WatchTV|Confirm|CursorUp|CursorDown|CursorLeft|CursorRight|"+
+            "VolumeUp|VolumeDown|Mute|ChannelStepUp|ChannelStepDown|PlayPause|Stop|Next|Previous|"+
+            "Options|Info|Guide|AmbilightOnOff|Digit0|Digit1|Digit2|Digit3|Digit4|Digit5|Digit6|Digit7|Digit8|Digit9|";
+        for(String key:commands)if(key.trim().isEmpty()||!allowed.contains("|"+key.trim()+"|"))
+            throw new IllegalArgumentException("Ukendt tast: "+key.trim());
+        StringBuilder normalized=new StringBuilder();
+        for(String key:commands){if(normalized.length()>0)normalized.append(",");normalized.append(key.trim());}
+        return normalized.toString();
+    }
+    private void executeMacro(int which){
+        if(api==null)return;
+        String commands=prefs.getString("macro_"+which,macroDefault(which));
+        final String normalized;
+        try{normalized=validateMacro(commands);}catch(Exception e){error(e);return;}
+        run("MACRO M"+which,()->{
+            for(String key:normalized.split(",")){
+                api.sendKey(key);Thread.sleep(220);
+            }
+            return true;
+        },r->message("✓  Macro M"+which+" gennemført",GREEN));
+    }
     private void selectInput(String id,String name){if(api==null)return;
         run("INPUT",()->api.selectSource(id),r->message("Kilde valgt  •  "+name,GREEN));
     }
