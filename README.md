@@ -1,34 +1,50 @@
-# H4XTOR Universal Philips OLED TV Remote
+# H4XTOR OLED Remote v3.0 — Samsung Galaxy S24 Ultra
 
-Native Android remote for Philips 65OLED865/12 (JointSpace API v6 / firmware API 6.4.0), optimized for Samsung Galaxy S24 Ultra.
+Android-app til **Philips 65OLED865/12**, JointSpace v6 (observeret API 6.4.0).
 
-## Project status
-The Android source is being migrated from the existing PhilipsTVRemote2026 project. This repository currently contains the product specification and build workflow; **it does not yet contain a complete Android application**. Do not treat the workflow as evidence of a successful build until the Android project is committed.
+## Installer APK
+1. Åbn [Android CI](https://github.com/h4xtor/Universal-Philips-OLED-TV-Remote/actions/workflows/android.yml).
+2. Vælg **seneste grønne kørsel på main**.
+3. Download `h4xtor-philips-debug-apk` under **Artifacts** og udpak ZIP.
+4. Installér `app-debug.apk` på Galaxy S24 Ultra. Hvis du får advarsel, skal du tillade installation fra filhåndteringen. APK'en er debug-signeret (ikke Play Store-signeret).
+5. Telefon og TV skal være på samme LAN. Start med TV tændt, gå til **TOOLS**, kontrollér `192.168.0.110` og tryk **PAR TV**; indtast PIN fra TV.
+6. For Wake-on-LAN indtastes **TV'ets korrekte MAC-adresse** under TOOLS. Aktivér TV'ets netværksstandby/remote start hvis tilgængelig. Test først efter normal standby, ikke afbrudt strøm.
 
-## Product requirements
-- Premium OLED-dark touch UI with large D-pad, power, volume, mute, channels, playback and source.
-- Secure PIN pairing with Philips JointSpace v6; store credentials using Android Keystore; never commit credentials or disable TLS verification globally.
-- Channel Matrix: fetch actual TV channel list, search and favorite channels, direct selection.
-- App Launcher: discover actual TV apps, launch by valid firmware-supported intent; gracefully handle unsupported apps.
-- Ambilight Lab: read supported styles/modes from TV and allow selecting supported modes; on/off and status.
-- Smart Power: standby via API; Wake-on-LAN using user-confirmed MAC, directed/subnet broadcast when available, bounded retries and connection polling. Never claim WoL guaranteed; test on device from standby.
-- Diagnostics: request logs with secrets redacted, status, API version, connectivity, endpoint capability probes.
-- Offline-first LAN-only, no analytics or cloud account.
-- Android build and lint in CI; release artifacts only when build passes.
+## Funktioner
 
-## Hardware
-- Philips 65OLED865/12 at 192.168.0.110 (configurable)
-- Samsung Galaxy S24 Ultra
+| Funktion | Implementering |
+|---|---|
+| Premium mørk fjernbetjening, touch/haptics, D-pad, OK, Back, Home | Implementeret |
+| Standby, Smart Wake med WOL/UDP9 og online-probe | Implementeret; TV/firmware-afhængig |
+| Volumen, mute, kanal +/- og medietaster | JointSpace API v6 |
+| Kanaloversigt, søgning, direkte valg, lokale favoritter | TV's egen kanaldatabase |
+| Installerede apps, søgning, start fra menu, hurtiggenveje | TV's egne intents |
+| Ambilight power, profiler, læs aktiv konfiguration, live supportedstyles | JointSpace API v6 |
+| Direkte input Live TV / HDMI 1–4 | Eksperimentelt på tværs af firmware |
+| PIN-parring og HTTP Digest over HTTPS | Credentials lagret i Android Keystore AES-GCM |
+| Certifikat TOFU-pinning med SHA-256 og eksplicit reset | Implementeret (første forbindelse kræver betroet LAN) |
+| Specialtaster og numerisk tastatur | Implementeret |
+| Tekstindtastning til TV apps | Ikke understøttet på denne firmware; appen påstår ikke andet |
 
-## Acceptance tests
-1. Pair from phone and reconnect after app restart.
-2. D-pad, Home, Back, Source, volume and mute work on real TV.
-3. Channel list reflects TV and direct channel selection works.
-4. Installed apps are discoverable and launch where supported.
-5. Ambilight styles offered are the TV's actual supported styles.
-6. Wake from standby succeeds on target TV/network or UI reports unsupported with diagnostics.
-7. No hard-coded credentials, permissive TLS trust manager or leaked secrets.
-8. GitHub Actions compiles APK and uploads build artifact.
+**TV-funktioner kan ikke garanteres uden fysisk test på den konkrete firmware.** Mislykkede API-kald rapporteres med fejl. WOL kan ikke vække et TV, hvis den aktuelle netværksgrænseflade mister strøm i standby.
 
-## Source migration
-Import the Android Studio source from the original `PhilipsTVRemote2026/android` project, then iterate without deleting working JointSpace behavior. The prior local v2.1 ZIP is a migration input, not a verified release.
+## Sikkerhed
+Appen bruger kun lokal netværkstrafik og ingen cloud/analytics. TV-systemopslag går til HTTP port 1925 (uden credentials); øvrige kald bruger HTTPS port 1926 med Digest Authentication. Philips anvender ofte selvsigneret certifikat; appen gemmer SHA-256 fingeraftrykket ved første forbindelse (TOFU) og afviser senere ændringer, indtil brugeren eksplicit nulstiller pinnen. Første parring bør kun udføres på betroet Wi-Fi. Ingen MAC-adresse eller login er indlejret i kildekoden.
+
+## Android Studio
+Åbn `android/` i Android Studio (Gradle 8.11.1, JDK 17, Android SDK 35), eller byg via workflow i `.github/workflows/android.yml`.
+
+App-ID: `dk.h4xtor.philipsremote`, minSdk 26, targetSdk 35.
+
+## Afgrænsninger
+Ingen test mod fysisk TV eller S24 Ultra er udført af GitHub Actions. Grøn CI bekræfter kompilering og lint, ikke funktionalitet på enhederne. Android TV-tekstinput er deaktiveret, fordi det tidligere TV API oplyste `textentry:not_available`. En kanal kan kun vælges, hvis Philips' kanaldatabase returnerer den.
+
+## Fejlfinding
+- **TV offline:** Tjek samme Wi-Fi, TV IP, og at client isolation/guest network er slået fra.
+- **PAR TV:** TV skal være tændt, PIN-flow skal afsluttes inden timeout.
+- **Certifikat ændret:** Kontrollér TV-IP før du nulstiller certifikatpin.
+- **Ingen kanaler/apps:** Tryk SYNC efter parring. Apps og kanaloplysninger afhænger af Philips API.
+- **Wake mislykkes:** Kontrollér MAC for det aktive interface, TV'ets standbyindstillinger, multicast/broadcast-filtrering, og om TV'et er på samme subnet.
+
+## Projektets oprindelse
+Funktionerne er baseret på den tidligere H4XTOR PhilipsTVRemote2026 Windows/Android-reference og migreret til en dedikeret S24 Ultra-app.
