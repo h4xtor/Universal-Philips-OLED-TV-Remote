@@ -178,6 +178,15 @@ public final class PhilipsApi {
     public JSONObject applications()throws Exception{return request("GET","applications",null,true,true);}
     public JSONObject channels()throws Exception{return request("GET","channeldb/tv/channelLists/all",null,true,true);}
     public JSONObject ambilight()throws Exception{return request("GET","ambilight/currentconfiguration",null,true,true);}
+    public JSONObject supportedAmbilightStyles()throws Exception{return request("GET","ambilight/supportedstyles",null,true,true);}
+    public JSONObject selectSource(String source)throws Exception{
+        String uri=source.startsWith("content://")?source:"content://android.media.tv/passthrough/"+source;
+        JSONObject intent=new JSONObject().put("extras",new JSONObject().put("uri",uri))
+            .put("action","org.droidtv.playtv.SELECTURI")
+            .put("component",new JSONObject().put("packageName","org.droidtv.playtv")
+                .put("className","org.droidtv.playtv.PlayTvActivity"));
+        return request("POST","activities/launch",new JSONObject().put("intent",intent),true,true);
+    }
     public JSONObject ambilightPower(boolean on)throws Exception{return request("POST","ambilight/power",new JSONObject().put("power",on?"On":"Off"),true,true);}
     public JSONObject ambilightStyle(String style,String setting)throws Exception{
         return request("POST","ambilight/currentconfiguration",new JSONObject().put("styleName",style).put("isExpert",false).put("menuSetting",setting),true,true);
