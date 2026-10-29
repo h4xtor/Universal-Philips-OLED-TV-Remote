@@ -18,7 +18,7 @@ public final class MainActivity extends Activity {
   @Override public void onCreate(Bundle b) {
     super.onCreate(b);
     LinearLayout root=new LinearLayout(this);
-    root.setOrientation(1); root.setPadding(32,50,32,32);
+    root.setOrientation(LinearLayout.VERTICAL); root.setPadding(32,50,32,32);
     root.setBackgroundColor(Color.rgb(9,14,24));
     ScrollView sc=new ScrollView(this); sc.addView(root); setContentView(sc);
     TextView heading=new TextView(this); heading.setText("H4XTOR  /  OLED REMOTE");
