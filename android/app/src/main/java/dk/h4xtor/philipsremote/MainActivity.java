@@ -410,7 +410,7 @@ public final class MainActivity extends Activity {
         run("AMBI",()->api.ambilightStyle(style,setting),r->message("Ambilight  •  "+name,GREEN));}
     private void readAmbilight(){if(api==null)return;
         run("AMBI",api::ambilight,r->new AlertDialog.Builder(this).setTitle("Aktuel Ambilight-konfiguration")
-            .setMessage(((JSONObject)r).toString(2)).setPositiveButton("OK",null).show());}
+            .setMessage(((JSONObject)r).toString()).setPositiveButton("OK",null).show());}
 
     private interface Job{Object run()throws Exception;}
     private interface Done{void accept(Object value);}
@@ -462,7 +462,7 @@ public final class MainActivity extends Activity {
         LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(0,dp(57),1);
         p.setMargins(dp(3),dp(3),dp(3),dp(3));row.addView(button(s,color,action),p);
     }
-    private LinearLayout.LayoutParams gap(int height,int top){LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(-1,height);
+    private LinearLayout.LayoutParams gap(int height,int top){LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(-1,height<dp(30)?ViewGroup.LayoutParams.WRAP_CONTENT:height);
         p.topMargin=top;return p;}
     private LinearLayout.LayoutParams match(){return new LinearLayout.LayoutParams(-1,-2);}
     private int dp(int n){return Math.round(n*getResources().getDisplayMetrics().density);}
